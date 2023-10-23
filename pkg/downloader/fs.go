@@ -38,7 +38,7 @@ func MakeOutputDir(destDir string) error {
 	return nil
 }
 
-func RenameExtractedFile(zipFilePath string, file *os.File) (string, error) {
+func GetNewFileName(zipFilePath string, file *os.File) (string, error) {
 	fp := file.Name()
 	fmt.Println("file path: ", zipFilePath)
 	parentDir := filepath.Dir(fp)
@@ -50,10 +50,6 @@ func RenameExtractedFile(zipFilePath string, file *os.File) (string, error) {
 	ext := filepath.Ext(fp)
 	newName := yearStr + "_annual" + ext
 	outName := filepath.Join(parentDir, newName)
-	err = os.Rename(fp, outName)
-	if err != nil {
-		return "", err
-	}
 	return outName, nil
 }
 
@@ -69,14 +65,12 @@ func CopyArchiveFileToDest(zipFile *zip.File, fp string) (*os.File, error) {
 		return nil, err
 	}
 
-	defer func() {
-		closeErr := fileInArchive.Close()
-		if closeErr != nil && err == nil {
-			err = closeErr
-		}
-	}()
-
 	if _, err := io.Copy(dstFile, fileInArchive); err != nil {
+		return nil, err
+	}
+
+	err = fileInArchive.Close()
+	if err != nil {
 		return nil, err
 	}
 

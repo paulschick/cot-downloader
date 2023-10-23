@@ -25,19 +25,18 @@ func ExtractYear(filename string) (int, error) {
 	return 0, fmt.Errorf("could not extract year from file name - Invalid file name format")
 }
 
+type Rename struct {
+	OldPath string
+	NewPath string
+}
+
 func ExtractDownload(zipFilePath string, destDir string) error {
 	arch, err := zip.OpenReader(zipFilePath)
 	if err != nil {
 		return err
 	}
 
-	defer func() {
-		closeErr := arch.Close()
-		if closeErr != nil && err == nil {
-			err = closeErr
-		}
-	}()
-
+	var renameList []Rename
 	for _, f := range arch.File {
 		filePath := filepath.Join(destDir, f.Name)
 
@@ -56,16 +55,29 @@ func ExtractDownload(zipFilePath string, destDir string) error {
 			return err
 		}
 
-		newName, err := RenameExtractedFile(zipFilePath, dstFile)
+		newName, err := GetNewFileName(zipFilePath, dstFile)
 		if err != nil {
 			return err
 		}
-		fmt.Println("Extracted and renamed file:", newName)
+
+		renameList = append(renameList, Rename{OldPath: dstFile.Name(), NewPath: newName})
 
 		err = dstFile.Close()
 		if err != nil {
 			return err
 		}
+	}
+
+	for _, rename := range renameList {
+		err = os.Rename(rename.OldPath, rename.NewPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = arch.Close()
+	if err != nil {
+		return err
 	}
 
 	// Delete temp zip file
